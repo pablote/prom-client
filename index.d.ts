@@ -672,7 +672,12 @@ export class Pushgateway<T extends RegistryContentType> {
 	 * @param options Options
 	 * @param registry Registry
 	 */
-	constructor(url: string, options?: any, registry?: Registry<T>);
+	constructor(
+		url: string,
+		fetchOptions?: any,
+		registry?: Registry<T>,
+		options?: { overridePath?: string },
+	);
 
 	/**
 	 * Add metric and overwrite old ones

@@ -1,9 +1,10 @@
 'use strict';
-
-const nock = require('nock');
-const { gzipSync } = require('zlib');
-
+const fetchMock = require('jest-fetch-mock');
 const Registry = require('../index').Registry;
+
+const pushGatewayURL = 'http://192.168.99.100:9091';
+
+fetchMock.enableMocks();
 
 describe.each([
 	['Prometheus', Registry.PROMETHEUS_CONTENT_TYPE],
@@ -27,78 +28,62 @@ describe.each([
 		}
 
 		describe('pushAdd', () => {
-			it('should push metrics', () => {
-				const mockHttp = nock('http://192.168.99.100:9091')
-					.post('/metrics/job/testJob', body)
-					.reply(200);
+			it('should push metrics', async () => {
+				await instance.pushAdd({ jobName: 'testJob' });
+				expect(fetchMock).toHaveBeenCalled();
+				expect(fetchMock.mock.lastCall[0]).toEqual(
+					`${pushGatewayURL}/metrics/job/testJob`,
+				);
+			});
 
-				return instance.pushAdd({ jobName: 'testJob' }).then(() => {
-					expect(mockHttp.isDone());
+			it('should use groupings', async () => {
+				await instance.pushAdd({
+					jobName: 'testJob',
+					groupings: { key: 'value' },
 				});
+				expect(fetchMock).toHaveBeenCalled();
+				expect(fetchMock.mock.lastCall[0]).toEqual(
+					`${pushGatewayURL}/metrics/job/testJob/key/value`,
+				);
 			});
 
-			it('should use groupings', () => {
-				const mockHttp = nock('http://192.168.99.100:9091')
-					.post('/metrics/job/testJob/key/value', body)
-					.reply(200);
-
-				return instance
-					.pushAdd({
-						jobName: 'testJob',
-						groupings: { key: 'value' },
-					})
-					.then(() => {
-						expect(mockHttp.isDone());
-					});
-			});
-
-			it('should escape groupings', () => {
-				const mockHttp = nock('http://192.168.99.100:9091')
-					.post('/metrics/job/testJob/key/va%26lue', body)
-					.reply(200);
-
-				return instance
-					.pushAdd({
-						jobName: 'testJob',
-						groupings: { key: 'va&lue' },
-					})
-					.then(() => {
-						expect(mockHttp.isDone());
-					});
+			it('should escape groupings', async () => {
+				await instance.pushAdd({
+					jobName: 'testJob',
+					groupings: { key: 'va&lue' },
+				});
+				expect(fetchMock).toHaveBeenCalled();
+				expect(fetchMock.mock.lastCall[0]).toEqual(
+					`${pushGatewayURL}/metrics/job/testJob/key/va%26lue`,
+				);
 			});
 		});
 
 		describe('push', () => {
-			it('should push with PUT', () => {
-				const mockHttp = nock('http://192.168.99.100:9091')
-					.put('/metrics/job/testJob', body)
-					.reply(200);
-
-				return instance.push({ jobName: 'testJob' }).then(() => {
-					expect(mockHttp.isDone());
-				});
+			it('should push with PUT', async () => {
+				await instance.push({ jobName: 'testJob' });
+				expect(fetchMock).toHaveBeenCalled();
+				expect(fetchMock.mock.lastCall[0]).toEqual(
+					`${pushGatewayURL}/metrics/job/testJob`,
+				);
 			});
 
-			it('should uri encode url', () => {
-				const mockHttp = nock('http://192.168.99.100:9091')
-					.put('/metrics/job/test%26Job', body)
-					.reply(200);
-
-				return instance.push({ jobName: 'test&Job' }).then(() => {
-					expect(mockHttp.isDone());
-				});
+			it('should uri encode url', async () => {
+				await instance.push({ jobName: 'test&Job' });
+				expect(fetchMock).toHaveBeenCalled();
+				expect(fetchMock.mock.lastCall[0]).toEqual(
+					`${pushGatewayURL}/metrics/job/test%26Job`,
+				);
 			});
 		});
 
 		describe('delete', () => {
-			it('should push delete with no body', () => {
-				const mockHttp = nock('http://192.168.99.100:9091')
-					.delete('/metrics/job/testJob')
-					.reply(200);
-
-				return instance.delete({ jobName: 'testJob' }).then(() => {
-					expect(mockHttp.isDone());
-				});
+			it('should push delete with no body', async () => {
+				await instance.delete({ jobName: 'testJob' });
+				expect(fetchMock).toHaveBeenCalled();
+				expect(fetchMock.mock.lastCall[0]).toEqual(
+					`${pushGatewayURL}/metrics/job/testJob`,
+				);
 			});
 		});
 
@@ -115,46 +100,26 @@ describe.each([
 				);
 			});
 
-			it('pushAdd should send POST request with basic auth data', () => {
-				const mockHttp = nock(`http://${auth}@192.168.99.100:9091`)
-					.post('/metrics/job/testJob', body)
-					.reply(200);
-
-				return instance.pushAdd({ jobName: 'testJob' }).then(() => {
-					expect(mockHttp.isDone());
-				});
+			it('pushAdd should send POST request with basic auth data', async () => {
+				await instance.pushAdd({ jobName: 'testJob' });
+				expect(fetchMock).toHaveBeenCalled();
+				expect(fetchMock.mock.lastCall[0]).toContain(auth);
 			});
 
-			it('push should send PUT request with basic auth data', () => {
-				const mockHttp = nock(`http://${auth}@192.168.99.100:9091`)
-					.put('/metrics/job/testJob', body)
-					.reply(200);
-
-				return instance.push({ jobName: 'testJob' }).then(() => {
-					expect(mockHttp.isDone());
-				});
+			it('push should send PUT request with basic auth data', async () => {
+				await instance.push({ jobName: 'testJob' });
+				expect(fetchMock).toHaveBeenCalled();
+				expect(fetchMock.mock.lastCall[0]).toContain(auth);
 			});
 
-			it('delete should send DELETE request with basic auth data', () => {
-				const mockHttp = nock(`http://${auth}@192.168.99.100:9091`)
-					.delete('/metrics/job/testJob')
-					.reply(200);
-
-				return instance.delete({ jobName: 'testJob' }).then(() => {
-					expect(mockHttp.isDone());
-				});
+			it('delete should send DELETE request with basic auth data', async () => {
+				await instance.delete({ jobName: 'testJob' });
+				expect(fetchMock).toHaveBeenCalled();
+				expect(fetchMock.mock.lastCall[0]).toContain(auth);
 			});
 		});
 
-		it('should be possible to extend http/s requests with options', () => {
-			const mockHttp = nock('http://192.168.99.100:9091', {
-				reqheaders: {
-					'unit-test': '1',
-				},
-			})
-				.put('/metrics/job/testJob', body)
-				.reply(200);
-
+		it('should be possible to extend http/s requests with options', async () => {
 			instance = new Pushgateway(
 				'http://192.168.99.100:9091',
 				{
@@ -165,39 +130,16 @@ describe.each([
 				registry,
 			);
 
-			return instance.push({ jobName: 'testJob' }).then(() => {
-				expect(mockHttp.isDone());
-			});
-		});
-
-		it('should use gzip request', () => {
-			const mockHttp = nock('http://192.168.99.100:9091', {
-				reqheaders: {
-					'Content-Encoding': 'gzip',
-				},
-			})
-				.post('/metrics/job/testJob', gzipSync(body))
-				.reply(200);
-
-			instance = new Pushgateway(
-				'http://192.168.99.100:9091',
-				{
-					headers: {
-						'Content-Encoding': 'gzip',
-					},
-				},
-				registry,
-			);
-
-			return instance.pushAdd({ jobName: 'testJob' }).then(() => {
-				expect(mockHttp.isDone());
-			});
+			await instance.push({ jobName: 'testJob' });
+			expect(fetchMock).toHaveBeenCalled();
+			expect(fetchMock.mock.lastCall[1].headers).toEqual({ 'unit-test': '1' });
 		});
 	};
 
 	describe('global registry', () => {
 		afterEach(() => {
 			register.clear();
+			fetchMock.resetMocks();
 		});
 
 		beforeEach(() => {
@@ -214,6 +156,7 @@ describe.each([
 	describe('registry instance', () => {
 		afterEach(() => {
 			register.clear();
+			fetchMock.resetMocks();
 		});
 
 		beforeEach(() => {

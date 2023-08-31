@@ -1,20 +1,11 @@
 'use strict';
+const fetchMock = require('jest-fetch-mock');
 
 const pushGatewayPath = '/path';
 const pushGatewayURL = 'http://192.168.99.100:9091';
 const pushGatewayFullURL = pushGatewayURL + pushGatewayPath;
 
-const mockHttp = jest.fn().mockReturnValue({
-	on: jest.fn(),
-	end: jest.fn(),
-	write: jest.fn(),
-});
-
-jest.mock('http', () => {
-	return {
-		request: mockHttp,
-	};
-});
+fetchMock.enableMocks();
 
 const Registry = require('../index').Registry;
 
@@ -33,64 +24,79 @@ describe.each([
 
 	const tests = function () {
 		describe('pushAdd', () => {
-			it('should push metrics', () => {
-				instance.pushAdd({ jobName: 'testJob' });
-
-				expect(mockHttp).toHaveBeenCalledTimes(1);
-				const invocation = mockHttp.mock.calls[0][0];
-				expect(invocation.method).toEqual('POST');
-				expect(invocation.path).toEqual('/path/metrics/job/testJob');
+			it('should push metrics', async () => {
+				await instance.pushAdd({ jobName: 'testJob' });
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+				const invocation = fetchMock.mock.lastCall;
+				expect(invocation[1].method).toEqual('POST');
+				expect(invocation[0]).toEqual(
+					`${pushGatewayURL}/path/metrics/job/testJob`,
+				);
 			});
 
-			it('should use groupings', () => {
-				instance.pushAdd({ jobName: 'testJob', groupings: { key: 'value' } });
+			it('should use groupings', async () => {
+				await instance.pushAdd({
+					jobName: 'testJob',
+					groupings: { key: 'value' },
+				});
 
-				expect(mockHttp).toHaveBeenCalledTimes(1);
-				const invocation = mockHttp.mock.calls[0][0];
-				expect(invocation.method).toEqual('POST');
-				expect(invocation.path).toEqual('/path/metrics/job/testJob/key/value');
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+				const invocation = fetchMock.mock.lastCall;
+				expect(invocation[1].method).toEqual('POST');
+				expect(invocation[0]).toEqual(
+					`${pushGatewayURL}/path/metrics/job/testJob/key/value`,
+				);
 			});
 
-			it('should escape groupings', () => {
-				instance.pushAdd({ jobName: 'testJob', groupings: { key: 'va&lue' } });
+			it('should escape groupings', async () => {
+				await instance.pushAdd({
+					jobName: 'testJob',
+					groupings: { key: 'va&lue' },
+				});
 
-				expect(mockHttp).toHaveBeenCalledTimes(1);
-				const invocation = mockHttp.mock.calls[0][0];
-				expect(invocation.method).toEqual('POST');
-				expect(invocation.path).toEqual(
-					'/path/metrics/job/testJob/key/va%26lue',
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+				const invocation = fetchMock.mock.lastCall;
+				expect(invocation[1].method).toEqual('POST');
+				expect(invocation[0]).toEqual(
+					`${pushGatewayURL}/path/metrics/job/testJob/key/va%26lue`,
 				);
 			});
 		});
 
 		describe('push', () => {
-			it('should push with PUT', () => {
-				instance.push({ jobName: 'testJob' });
+			it('should push with PUT', async () => {
+				await instance.push({ jobName: 'testJob' });
 
-				expect(mockHttp).toHaveBeenCalledTimes(1);
-				const invocation = mockHttp.mock.calls[0][0];
-				expect(invocation.method).toEqual('PUT');
-				expect(invocation.path).toEqual('/path/metrics/job/testJob');
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+				const invocation = fetchMock.mock.lastCall;
+				expect(invocation[1].method).toEqual('PUT');
+				expect(invocation[0]).toEqual(
+					`${pushGatewayURL}/path/metrics/job/testJob`,
+				);
 			});
 
-			it('should uri encode url', () => {
-				instance.push({ jobName: 'test&Job' });
+			it('should uri encode url', async () => {
+				await instance.push({ jobName: 'test&Job' });
 
-				expect(mockHttp).toHaveBeenCalledTimes(1);
-				const invocation = mockHttp.mock.calls[0][0];
-				expect(invocation.method).toEqual('PUT');
-				expect(invocation.path).toEqual('/path/metrics/job/test%26Job');
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+				const invocation = fetchMock.mock.lastCall;
+				expect(invocation[1].method).toEqual('PUT');
+				expect(invocation[0]).toEqual(
+					`${pushGatewayURL}/path/metrics/job/test%26Job`,
+				);
 			});
 		});
 
 		describe('delete', () => {
-			it('should push delete with no body', () => {
-				instance.delete({ jobName: 'testJob' });
+			it('should push delete with no body', async () => {
+				await instance.delete({ jobName: 'testJob' });
 
-				expect(mockHttp).toHaveBeenCalledTimes(1);
-				const invocation = mockHttp.mock.calls[0][0];
-				expect(invocation.method).toEqual('DELETE');
-				expect(invocation.path).toEqual('/path/metrics/job/testJob');
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+				const invocation = fetchMock.mock.lastCall;
+				expect(invocation[1].method).toEqual('DELETE');
+				expect(invocation[0]).toEqual(
+					`${pushGatewayURL}/path/metrics/job/testJob`,
+				);
 			});
 		});
 
@@ -107,35 +113,35 @@ describe.each([
 				);
 			});
 
-			it('pushAdd should send POST request with basic auth data', () => {
-				instance.pushAdd({ jobName: 'testJob' });
+			it('pushAdd should send POST request with basic auth data', async () => {
+				await instance.pushAdd({ jobName: 'testJob' });
 
-				expect(mockHttp).toHaveBeenCalledTimes(1);
-				const invocation = mockHttp.mock.calls[0][0];
-				expect(invocation.method).toEqual('POST');
-				expect(invocation.auth).toEqual(auth);
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+				const invocation = fetchMock.mock.lastCall;
+				expect(invocation[1].method).toEqual('POST');
+				expect(invocation[0]).toContain(auth);
 			});
 
-			it('push should send PUT request with basic auth data', () => {
-				instance.push({ jobName: 'testJob' });
+			it('push should send PUT request with basic auth data', async () => {
+				await instance.push({ jobName: 'testJob' });
 
-				expect(mockHttp).toHaveBeenCalledTimes(1);
-				const invocation = mockHttp.mock.calls[0][0];
-				expect(invocation.method).toEqual('PUT');
-				expect(invocation.auth).toEqual(auth);
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+				const invocation = fetchMock.mock.lastCall;
+				expect(invocation[1].method).toEqual('PUT');
+				expect(invocation[0]).toContain(auth);
 			});
 
-			it('delete should send DELETE request with basic auth data', () => {
-				instance.delete({ jobName: 'testJob' });
+			it('delete should send DELETE request with basic auth data', async () => {
+				await instance.delete({ jobName: 'testJob' });
 
-				expect(mockHttp).toHaveBeenCalledTimes(1);
-				const invocation = mockHttp.mock.calls[0][0];
-				expect(invocation.method).toEqual('DELETE');
-				expect(invocation.auth).toEqual(auth);
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+				const invocation = fetchMock.mock.lastCall;
+				expect(invocation[1].method).toEqual('DELETE');
+				expect(invocation[0]).toContain(auth);
 			});
 		});
 
-		it('should be possible to extend http/s requests with options', () => {
+		it('should be possible to extend http/s requests with options', async () => {
 			instance = new Pushgateway(
 				pushGatewayFullURL,
 				{
@@ -146,16 +152,16 @@ describe.each([
 				registry,
 			);
 
-			instance.push({ jobName: 'testJob' });
+			await instance.push({ jobName: 'testJob' });
 
-			expect(mockHttp).toHaveBeenCalledTimes(1);
-			const invocation = mockHttp.mock.calls[0][0];
-			expect(invocation.headers).toEqual({ 'unit-test': '1' });
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			const invocation = fetchMock.mock.lastCall;
+			expect(invocation[1].headers).toEqual({ 'unit-test': '1' });
 		});
 	};
 	describe('global registry', () => {
 		afterEach(() => {
-			mockHttp.mockClear();
+			fetchMock.resetMocks();
 			register.clear();
 		});
 		beforeEach(() => {
@@ -169,7 +175,7 @@ describe.each([
 	});
 	describe('registry instance', () => {
 		afterEach(() => {
-			mockHttp.mockClear();
+			fetchMock.resetMocks();
 		});
 		beforeEach(() => {
 			registry = new Registry(regType);
